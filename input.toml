@@ -1,0 +1,14 @@
+[definition.vec]
+headers = ["./test_input/header/vec_C__PREFIX__.h"]
+sources = ["./test_input/src/vec_C__PREFIX__.c"]
+replace.C__VALTYPE__ = "type"
+replace.C__PREFIX__ = "prefix"
+#replace.C__KEYTYPE__ = "type"
+
+
+[[create.vec]]
+sources_output = "./output/src/vec/"
+headers_output = "./output/include/me/vec/"
+replace.C__VALTYPE__ = "char *"
+replace.C__PREFIX__ = "str"
+
