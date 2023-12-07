@@ -7,6 +7,25 @@ replace.C__PREFIX__ = "prefix"
 replace.C__PREFIXUP__ = "prefix"
 #replace.C__KEYTYPE__ = "type"
 
+
+[definition.hashmap]
+headers = ["./test_input/header/hashmap_C__PREFIX__.h"]
+sources = ["./test_input/src/hashmap_C__PREFIX__.c"]
+replace.C__VALTYPE__ = "type"
+replace.C__KEYTYPE__ = "type"
+replace.C__TYPEHEADER__ = "header_include"
+replace.C__PREFIX__ = "prefix"
+replace.C__PREFIXUP__ = "prefix"
+
+[[create.hashmap]]
+headers_output = "./output/include/me/hashmap/"
+sources_output = "./output/src/hashmap/"
+replace.C__VALTYPE__ = "t_str"
+replace.C__KEYTYPE__ = "t_str"
+replace.C__TYPEHEADER__ = '#include "me/hashmap/t_str.h"'
+replace.C__PREFIX__ = "str"
+replace.C__PREFIXUP__ = "STR"
+
 [[create.vec]]
 sources_output = "./output/src/vec/"
 headers_output = "./output/include/me/vec/"
