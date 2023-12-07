@@ -55,7 +55,17 @@ fn check_all_def(data: &InputFile) -> Result<()> {
         check_transformations(
             def,
             data.create.get(name).map(|v| v.as_slice()).unwrap_or(&[]),
-        ).wrap_err(eyre!("Transform with name '{name}' doesn't have valid schema"))?;
+        )
+        .wrap_err(eyre!(
+            "Transform with name '{name}' doesn't have valid schema"
+        ))?;
+    }
+    for (name, def) in &data.definition {
+        apply_transformation(
+            def,
+            data.create.get(name).map(|v| v.as_slice()).unwrap_or(&[]),
+        )
+        .wrap_err(eyre!("Transform with name '{name}' failed to apply"))?;
     }
     Ok(())
 }
@@ -121,6 +131,15 @@ fn apply_transformation(
     def: &input_file::Definition,
     create: &[input_file::Create],
 ) -> eyre::Result<()> {
-    
+    let regexs = def
+        .replace
+        .keys()
+        .map(|k| (k, regex::Regex::new(regex_syntax::escape(&k).as_str())))
+        .collect::<Vec<_>>();
+    let regex_set =
+        regex::RegexSet::new(def.replace.keys().map(|k| regex_syntax::escape(k)));
+    for c in create {
+        let out_source = {c.headers_output.display();}; //.iter()//.map(|p| p);
+    }
     Ok(())
 }

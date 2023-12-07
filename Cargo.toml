@@ -11,5 +11,7 @@ color-eyre = "0.6.2"
 eyre = "0.6.9"
 fastmod = { git = "https://github.com/Maix0/fastmod", version = "0.4.4" }
 paste = "1.0.14"
+regex = { version = "1.10.2", features = ["std"] }
+regex-syntax = "0.8.2"
 serde = { version = "1.0.193", features = ["derive", "rc"] }
 toml = "0.8.8"

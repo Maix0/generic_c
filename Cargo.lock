@@ -370,6 +370,8 @@ dependencies = [
  "eyre",
  "fastmod",
  "paste",
+ "regex",
+ "regex-syntax",
  "serde",
  "toml",
 ]
