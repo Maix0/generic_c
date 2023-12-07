@@ -1,0 +1,7 @@
+CompileFlags: # Tweak the parse settings
+  Add:
+    - "-DGENERIC_WRITING"
+    - "-Wextra"
+    - "-Werror"
+    - "-Wall"
+

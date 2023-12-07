@@ -25,6 +25,7 @@ declare_kind! {
         Path,
         Prefix,
         Type,
+        HeaderInclude
     }
 }
 

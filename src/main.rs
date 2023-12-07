@@ -9,13 +9,17 @@ extern crate color_eyre;
 extern crate eyre;
 
 extern crate toml;
+extern crate walkdir;
 
 use eyre::{Result, WrapErr};
+use grep_regex::RegexMatcher;
 use input_file::InputFile;
+use regex::{Regex, RegexSet};
 mod input_file;
 
 use std::collections::HashSet;
 use std::fmt::Write;
+use std::path::{Path, PathBuf};
 
 fn open_input_file(p: impl AsRef<std::path::Path>) -> Result<input_file::InputFile> {
     toml::from_str::<input_file::InputFile>(
@@ -127,19 +131,92 @@ fn check_transformations(
 
     Ok(())
 }
+
+fn regex_path(
+    regex_set: &RegexSet,
+    regexs: &[(&String, Regex)],
+    p: &Path,
+    c: &input_file::Create,
+) -> Result<std::path::PathBuf> {
+    let idx = regex_set
+        .matches(p.to_str().ok_or(eyre!("out path isn't UTF-8"))?)
+        .iter()
+        .next();
+    Ok(match idx {
+        None => p.to_path_buf(),
+        Some(i) => {
+            let (n, r) = &regexs[i];
+            std::path::PathBuf::from(
+                r.replace_all(
+                    p.to_str().ok_or(eyre!("out path isn't UTF-8"))?,
+                    c.replace[n.as_str()].as_str(),
+                )
+                .into_owned(),
+            )
+        }
+    })
+}
+
 fn apply_transformation(
     def: &input_file::Definition,
     create: &[input_file::Create],
 ) -> eyre::Result<()> {
+    let regex_set = regex::RegexSet::new(def.replace.keys().map(|k| regex_syntax::escape(k)))
+        .wrap_err("Error with regexes for a definition")?;
     let regexs = def
         .replace
         .keys()
-        .map(|k| (k, regex::Regex::new(regex_syntax::escape(&k).as_str())))
+        .map(|k| {
+            (
+                k,
+                regex::Regex::new(regex_syntax::escape(k).as_str()).unwrap(),
+            )
+        })
         .collect::<Vec<_>>();
-    let regex_set =
-        regex::RegexSet::new(def.replace.keys().map(|k| regex_syntax::escape(k)));
     for c in create {
-        let out_source = {c.headers_output.display();}; //.iter()//.map(|p| p);
+        let mut out_source = regex_path(&regex_set, &regexs, &c.sources_output, c)
+            .wrap_err("Error with the source regex for output")?;
+        let mut out_header = regex_path(&regex_set, &regexs, &c.headers_output, c)
+            .wrap_err("Error with the header regex for output")?;
+        std::fs::create_dir_all(&out_source)
+            .wrap_err("Error when creating the source directory")?;
+        std::fs::create_dir_all(&out_header)
+            .wrap_err("Error when creating the header directory")?;
+        let header_files = def
+            .headers
+            .iter()
+            .map(|p| regex_path(&regex_set, &regexs, p.as_path(), c).map(|r| (p, r)))
+            .collect::<Result<Vec<(&PathBuf, PathBuf)>>>()?;
+        let source_files = def
+            .sources
+            .iter()
+            .map(|p| regex_path(&regex_set, &regexs, p.as_path(), c).map(|r| (p, r)))
+            .collect::<Result<Vec<(&PathBuf, PathBuf)>>>()?;
+        for (to_copy, out_path) in header_files {
+            out_header.push(out_path.file_name().unwrap());
+            std::fs::copy(to_copy, &out_header)?;
+            out_header.pop();
+        }
+        for (to_copy, out_path) in source_files {
+            out_source.push(out_path.file_name().unwrap());
+            std::fs::copy(to_copy, &out_source)?;
+            out_source.pop();
+        }
+
+        let out_paths = vec![out_header.to_str().unwrap(), out_source.to_str().unwrap()];
+
+        regexs.iter().try_for_each(|(k, r)| {
+            fastmod::Fastmod::run_fast(
+                r,
+                &RegexMatcher::new_line_matcher(r.as_str())?,
+                c.replace[k.as_str()].as_str(),
+                out_paths.clone(),
+                Default::default(),
+                false,
+                false,
+            )
+            .map_err(|e| eyre!(e.to_string()))
+        })?;
     }
     Ok(())
 }

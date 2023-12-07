@@ -369,11 +369,13 @@ dependencies = [
  "color-eyre",
  "eyre",
  "fastmod",
+ "grep-regex",
  "paste",
  "regex",
  "regex-syntax",
  "serde",
  "toml",
+ "walkdir",
 ]
 
 [[package]]
