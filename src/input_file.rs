@@ -89,21 +89,20 @@ mod kind_serde {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InputFile {
-    definition: HashMap<String, Definition>,
-    create: HashMap<String, Vec<Create>>,
+    pub definition: HashMap<String, Definition>,
+    pub create: HashMap<String, Vec<Create>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Definition {
-    headers: Vec<std::path::PathBuf>,
-    sources: Vec<std::path::PathBuf>,
-
-    replace: HashMap<String, Kind>,
+    pub headers: Vec<std::path::PathBuf>,
+    pub sources: Vec<std::path::PathBuf>,
+    pub replace: HashMap<String, Kind>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Create {
-    headers_output: std::path::PathBuf,
-    sources_output: std::path::PathBuf,
-    replace: HashMap<String, String>,
+    pub headers_output: std::path::PathBuf,
+    pub sources_output: std::path::PathBuf,
+    pub replace: HashMap<String, String>,
 }
