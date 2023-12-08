@@ -11,12 +11,15 @@ extern crate eyre;
 extern crate toml;
 extern crate walkdir;
 
+mod clap_mod;
+
 use eyre::{Result, WrapErr};
 use grep_regex::RegexMatcher;
 use input_file::InputFile;
 use regex::{Regex, RegexSet};
 mod input_file;
 
+use clap::Parser;
 use std::collections::HashSet;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
@@ -31,10 +34,18 @@ fn open_input_file(p: impl AsRef<std::path::Path>) -> Result<input_file::InputFi
 
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
-    let data = open_input_file("./input.toml")?;
+    let args = clap_mod::Cli::parse();
+    let data = open_input_file(args.input_file)?;
     check_all_def(&data)?;
-
-    println!("{data:?}");
+    for (name, def) in &data.definition {
+        apply_transformation(
+            def,
+            data.create.get(name).map_or(&[], std::vec::Vec::as_slice),
+            &args.output_dir,
+        )
+        .wrap_err(eyre!("Transform with name '{name}' failed to apply"))?;
+        println!("Apllied all transform for definition '{name}'");
+    }
     Ok(())
 }
 fn check_all_def(data: &InputFile) -> Result<()> {
@@ -48,7 +59,7 @@ fn check_all_def(data: &InputFile) -> Result<()> {
             .keys()
             .filter(|n| data.definition.get(n.as_str()).is_none())
         {
-            writeln!(&mut out_err, "Definition {} is missing", missing_def)?;
+            writeln!(&mut out_err, "Definition {missing_def} is missing")?;
         }
         if !out_err.is_empty() {
             out_err.pop();
@@ -58,18 +69,11 @@ fn check_all_def(data: &InputFile) -> Result<()> {
     for (name, def) in &data.definition {
         check_transformations(
             def,
-            data.create.get(name).map(|v| v.as_slice()).unwrap_or(&[]),
+            data.create.get(name).map_or(&[], std::vec::Vec::as_slice),
         )
         .wrap_err(eyre!(
             "Transform with name '{name}' doesn't have valid schema"
         ))?;
-    }
-    for (name, def) in &data.definition {
-        apply_transformation(
-            def,
-            data.create.get(name).map(|v| v.as_slice()).unwrap_or(&[]),
-        )
-        .wrap_err(eyre!("Transform with name '{name}' failed to apply"))?;
     }
     Ok(())
 }
@@ -135,23 +139,24 @@ fn check_transformations(
 fn regex_path(
     regex_set: &RegexSet,
     regexs: &[(&String, Regex)],
-    p: &Path,
+    path: &Path,
     c: &input_file::Create,
 ) -> Result<std::path::PathBuf> {
     let idx = regex_set
-        .matches(p.to_str().ok_or(eyre!("out path isn't UTF-8"))?)
+        .matches(path.to_str().ok_or(eyre!("out path isn't UTF-8"))?)
         .iter()
         .next();
     Ok(match idx {
-        None => p.to_path_buf(),
+        None => path.to_path_buf(),
         Some(i) => {
-            let (n, r) = &regexs[i];
+            let (name, regex) = &regexs[i];
             std::path::PathBuf::from(
-                r.replace_all(
-                    p.to_str().ok_or(eyre!("out path isn't UTF-8"))?,
-                    c.replace[n.as_str()].as_str(),
-                )
-                .into_owned(),
+                regex
+                    .replace_all(
+                        path.to_str().ok_or(eyre!("out path isn't UTF-8"))?,
+                        c.replace[name.as_str()].as_str(),
+                    )
+                    .into_owned(),
             )
         }
     })
@@ -160,7 +165,9 @@ fn regex_path(
 fn apply_transformation(
     def: &input_file::Definition,
     create: &[input_file::Create],
+    out_path: impl AsRef<Path>,
 ) -> eyre::Result<()> {
+    let out_path = out_path.as_ref();
     let regex_set = regex::RegexSet::new(def.replace.keys().map(|k| regex_syntax::escape(k)))
         .wrap_err("Error with regexes for a definition")?;
     let regexs = def
@@ -174,10 +181,14 @@ fn apply_transformation(
         })
         .collect::<Vec<_>>();
     for c in create {
-        let mut out_source = regex_path(&regex_set, &regexs, &c.sources_output, c)
-            .wrap_err("Error with the source regex for output")?;
-        let mut out_header = regex_path(&regex_set, &regexs, &c.headers_output, c)
-            .wrap_err("Error with the header regex for output")?;
+        let mut out_source = out_path.join(
+            regex_path(&regex_set, &regexs, &c.sources_output, c)
+                .wrap_err("Error with the source regex for output")?,
+        );
+        let mut out_header = out_path.join(
+            regex_path(&regex_set, &regexs, &c.headers_output, c)
+                .wrap_err("Error with the header regex for output")?,
+        );
         std::fs::create_dir_all(&out_source)
             .wrap_err("Error when creating the source directory")?;
         std::fs::create_dir_all(&out_header)
@@ -211,7 +222,7 @@ fn apply_transformation(
                 &RegexMatcher::new_line_matcher(r.as_str())?,
                 c.replace[k.as_str()].as_str(),
                 out_paths.clone(),
-                Default::default(),
+                None,
                 false,
                 false,
             )
