@@ -1,27 +1,35 @@
 {
   description = "A basic flake with a shell";
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-  inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.rust-overlay.url = "github:oxalica/rust-overlay";
-  inputs.cargo-workspace.url = "github:Maix0/cargo-ws-flake";
-  inputs.cargo-semver-checks.url = "github:Maix0/cargo-semver-checks-flake";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    naersk.url = "github:nix-community/naersk";
+  };
   outputs = {
     self,
     nixpkgs,
     flake-utils,
     rust-overlay,
-    cargo-workspace,
-    cargo-semver-checks,
+    naersk,
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {
         inherit system;
         overlays = [(import rust-overlay)];
       };
+      naersk' = pkgs.callPackage naersk {};
+      generic_c_drv = naersk'.buildPackage {
+        src = ./.;
+      };
     in {
+      packages = rec {
+        default = generic_c;
+        generic_c = generic_c_drv;
+      };
+
+      app = flake-utils.lib.mkApp {drv = generic_c_drv;};
       devShell = with pkgs; let
-        cargo-ws = cargo-workspace.packages.${system}.default;
-        cargo-sc = cargo-semver-checks.packages.${system}.default;
         rust_dev =
           rust-bin.stable.latest.default.override
           {
@@ -38,9 +46,6 @@
             # Rust
             cmake
             rust_dev
-            cargo-sc
-            #cargo-semver-checks
-            cargo-ws
           ];
         };
     });
