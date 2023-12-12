@@ -35,8 +35,8 @@ fn open_input_file(p: impl AsRef<std::path::Path>) -> Result<input_file::InputFi
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
     let args = clap_mod::Cli::parse();
-    let data = open_input_file(args.input_file)?;
-    check_all_def(&data)?;
+    let mut data = open_input_file(args.input_file)?;
+    check_all_def(&mut data)?;
     for (name, def) in &data.definition {
         apply_transformation(
             def,
@@ -48,9 +48,9 @@ fn main() -> eyre::Result<()> {
     }
     Ok(())
 }
-fn check_all_def(data: &InputFile) -> Result<()> {
+fn check_all_def(data: &mut InputFile) -> Result<()> {
     {
-        data.definition.iter().try_for_each(|(k, v)| {
+        data.definition.iter_mut().try_for_each(|(k, v)| {
             check_definition(v).wrap_err(eyre!("Definition {k} is incorrect:"))
         })?;
         let mut out_err = String::new();
@@ -66,10 +66,12 @@ fn check_all_def(data: &InputFile) -> Result<()> {
             return Err(eyre!("{out_err}"));
         }
     }
-    for (name, def) in &data.definition {
+    for (name, def) in &mut data.definition {
         check_transformations(
             def,
-            data.create.get(name).map_or(&[], std::vec::Vec::as_slice),
+            data.create
+                .get_mut(name)
+                .map_or(&mut [], std::vec::Vec::as_mut_slice),
         )
         .wrap_err(eyre!(
             "Transform with name '{name}' doesn't have valid schema"
@@ -78,7 +80,9 @@ fn check_all_def(data: &InputFile) -> Result<()> {
     Ok(())
 }
 
-fn check_definition(def: &input_file::Definition) -> eyre::Result<()> {
+fn check_definition(def: &mut input_file::Definition) -> eyre::Result<()> {
+    def.replace
+        .insert("__TEMPLATE__".to_string(), input_file::Kind::Builtin);
     let missing_files = def
         .sources
         .iter()
@@ -97,14 +101,15 @@ fn check_definition(def: &input_file::Definition) -> eyre::Result<()> {
 }
 fn check_transformations(
     def: &input_file::Definition,
-    create: &[input_file::Create],
+    create: &mut [input_file::Create],
 ) -> eyre::Result<()> {
     let keys = def
         .replace
         .keys()
         .map(String::as_str)
         .collect::<HashSet<_>>();
-    create.iter().try_for_each(|c| {
+    create.iter_mut().try_for_each(|c| {
+        c.replace.insert("__TEMPLATE__".to_string(), String::new());
         let c_keys = c.replace.keys().map(String::as_str).collect::<HashSet<_>>();
         if c_keys != keys {
             if c_keys.is_subset(&keys) {
