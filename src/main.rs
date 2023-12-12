@@ -147,22 +147,25 @@ fn regex_path(
     path: &Path,
     c: &input_file::Create,
 ) -> Result<std::path::PathBuf> {
-    let idx = regex_set
-        .matches(path.to_str().ok_or(eyre!("out path isn't UTF-8"))?)
-        .iter()
-        .next();
-    Ok(match idx {
-        None => path.to_path_buf(),
-        Some(i) => {
-            let (name, regex) = &regexs[i];
-            std::path::PathBuf::from(
-                regex
-                    .replace_all(
-                        path.to_str().ok_or(eyre!("out path isn't UTF-8"))?,
-                        c.replace[name.as_str()].as_str(),
-                    )
-                    .into_owned(),
-            )
+    let mut path = path.to_path_buf();
+    Ok(loop {
+        let idx = regex_set
+            .matches(path.to_str().ok_or(eyre!("out path isn't UTF-8"))?)
+            .iter()
+            .next();
+        match idx {
+            None => break path,
+            Some(i) => {
+                let (name, regex) = &regexs[i];
+                path = std::path::PathBuf::from(
+                    regex
+                        .replace_all(
+                            path.to_str().ok_or(eyre!("out path isn't UTF-8"))?,
+                            c.replace[name.as_str()].as_str(),
+                        )
+                        .into_owned(),
+                )
+            }
         }
     })
 }

@@ -363,7 +363,7 @@ dependencies = [
 
 [[package]]
 name = "generic_c"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap 4.4.11",
  "color-eyre",
