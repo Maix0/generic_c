@@ -141,7 +141,7 @@ fn check_transformations(
             for (_, v) in c
                 .replace
                 .iter()
-                .filter(|(_, k)| def.replace[*k] == Kind::Bool)
+                .filter(|(k, _)| def.replace[*k] == Kind::Bool)
             {
                 if !(matches!(v.as_str(), "true" | "false")) {
                     write!(&mut s, "{v}, ")?;
