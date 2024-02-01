@@ -15,7 +15,7 @@ mod clap_mod;
 
 use eyre::{Result, WrapErr};
 use grep_regex::RegexMatcher;
-use input_file::InputFile;
+use input_file::{InputFile, Kind};
 use regex::{Regex, RegexSet};
 mod input_file;
 
@@ -127,6 +127,29 @@ fn check_transformations(
                 s.pop();
                 s.pop();
                 write!(&mut s, "' are missing from the definition")?;
+                return Err(eyre!("{s}"));
+            }
+        }
+        {
+            let mut has_any = false;
+            let mut s = String::from("Keys '");
+            for (_, v) in c
+                .replace
+                .iter()
+                .filter(|(_, k)| def.replace[*k] == Kind::Bool)
+            {
+                if !(matches!(v.as_str(), "true" | "false")) {
+                    write!(&mut s, "{v}, ")?;
+                    has_any = true;
+                }
+            }
+            write!(
+                &mut s,
+                "' have invalid values (must be either `true` or `false`)"
+            )?;
+            s.pop();
+            s.pop();
+            if has_any {
                 return Err(eyre!("{s}"));
             }
         }
