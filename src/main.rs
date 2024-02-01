@@ -138,22 +138,22 @@ fn check_transformations(
         {
             let mut has_any = false;
             let mut s = String::from("Keys '");
-            for (_, v) in c
+            for (k, v) in c
                 .replace
                 .iter()
                 .filter(|(k, _)| def.replace.get(*k) == Some(&Kind::Bool))
             {
                 if !(matches!(v.as_str(), "true" | "false")) {
-                    write!(&mut s, "{v}, ")?;
+                    write!(&mut s, "{k}, ")?;
                     has_any = true;
                 }
             }
+            s.pop();
+            s.pop();
             write!(
                 &mut s,
                 "' have invalid values (must be either `true` or `false`)"
             )?;
-            s.pop();
-            s.pop();
             if has_any {
                 return Err(eyre!("{s}"));
             }
@@ -184,7 +184,12 @@ fn regex_path(
                     regex
                         .replace_all(
                             path.to_str().ok_or(eyre!("out path isn't UTF-8"))?,
-                            c.replace[name.as_str()].as_str(),
+                            if !c.replace.contains_key(*name) {
+                                dbg!(&name);
+                                continue;
+                            } else {
+                                c.replace[name.as_str()].as_str()
+                            },
                         )
                         .into_owned(),
                 )
