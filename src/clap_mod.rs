@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(author = "maiboyer (aka Maix)", version = "0.1", about = "Generate source files from defintion and templates", long_about = None)]
+#[command(author = "maiboyer (aka Maix)", version = "2.0", about = "Generate source files from defintion and templates", long_about = None)]
 pub struct Cli {
     /// Optional name to operate on
     #[arg(value_name = "INPUT_FILE", default_value = "./input.toml")]
