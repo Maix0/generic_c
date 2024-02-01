@@ -28,6 +28,7 @@ declare_kind! {
         HeaderInclude,
         Value,
         Bool,
+        Builtin,
     }
 }
 
