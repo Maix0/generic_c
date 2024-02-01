@@ -17,3 +17,6 @@ regex-syntax = "0.8.2"
 serde = { version = "1.0.193", features = ["derive", "rc"] }
 toml = "0.8.8"
 walkdir = "2.4.0"
+
+[profile.release]
+debug = true
