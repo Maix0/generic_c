@@ -31,12 +31,7 @@
       app = flake-utils.lib.mkApp {drv = generic_c_drv;};
       devShell = with pkgs; let
         rust_dev =
-          rust-bin.stable.latest.default.override
-          {
-            extensions = ["rust-src"];
-
-            targets = ["wasm32-unknown-unknown" "x86_64-unknown-linux-gnu"];
-          };
+          rust-bin.stable.latest.default;
       in
         mkShell {
           nativeBuildInputs = [
